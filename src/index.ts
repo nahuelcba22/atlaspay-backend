@@ -4,8 +4,8 @@ import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { sequelize } from './db'; 
-import { Usuario } from './models/Usuario'; // <-- Importamos la clase para poder usarla
-
+import { Usuario } from './models/Usuario';
+import { Cuenta } from './models/Cuenta';
 // Cargar variables de entorno
 dotenv.config();
 
