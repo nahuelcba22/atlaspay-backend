@@ -1,4 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../db';
 
 // 1. Definimos la estructura de datos para TypeScript
@@ -11,16 +11,21 @@ interface UsuarioAttributes {
 }
 
 // 2. Definimos qué campos son opcionales al CREAR un usuario (id y fecha se autogeneran)
-interface UsuarioCreationAttributes
-  extends Optional<UsuarioAttributes, 'id' | 'fecha_registro'> {}
+interface UsuarioCreationAttributes {
+  id?: string;
+  nombre: string;
+  email: string;
+  password_hash: string;
+  fecha_registro?: Date;
+}
 
 // 3. Creamos la clase del modelo
-export class Usuario extends Model implements UsuarioAttributes {
-  public id!: string;
-  public nombre!: string;
-  public email!: string;
-  public password_hash!: string;
-  public readonly fecha_registro!: Date;
+export class Usuario extends Model<UsuarioAttributes, UsuarioCreationAttributes> implements UsuarioAttributes {
+  public declare id: string;
+  public declare nombre: string;
+  public declare email: string;
+  public declare password_hash: string;
+  public declare readonly fecha_registro: Date;
 }
 
 // 4. Inicializamos las columnas de la base de datos

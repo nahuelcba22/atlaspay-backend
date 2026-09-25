@@ -1,8 +1,8 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../db';
-import { Usuario } from './Usuario'; // Traemos al Usuario para poder vincularlo
+import { Usuario } from './Usuario'; 
 
-// Definimos la estructura de datos
+// 1. Definimos la estructura de datos
 interface CuentaAttributes {
   id: string;
   usuario_id: string;
@@ -12,20 +12,27 @@ interface CuentaAttributes {
   estado: string;
 }
 
-// Campos opcionales al crear
-interface CuentaCreationAttributes extends Optional<CuentaAttributes, 'id' | 'saldo' | 'estado'> {}
-
-// Creamos la clase
-export class Cuenta extends Model implements CuentaAttributes {
-  public id!: string;
-  public usuario_id!: string;
-  public cvu!: string;
-  public alias!: string;
-  public saldo!: number;
-  public estado!: string;
+// 2. Campos opcionales al crear
+interface CuentaCreationAttributes {
+  id?: string;
+  usuario_id: string;
+  cvu: string;
+  alias: string;
+  saldo?: number;
+  estado?: string;
 }
 
-// Inicializamos las columnas
+// 3. Creamos la clase (ESTO ES LO QUE FALTABA)
+export class Cuenta extends Model implements CuentaAttributes {
+  public declare id: string;
+  public declare usuario_id: string;
+  public declare cvu: string;
+  public declare alias: string;
+  public declare saldo: number;
+  public declare estado: string;
+}
+
+// 4. Inicializamos las columnas
 Cuenta.init(
   {
     id: {
@@ -36,7 +43,7 @@ Cuenta.init(
     usuario_id: {
       type: DataTypes.UUID,
       allowNull: false,
-      unique: true, // Esto asegura que un usuario no pueda tener más de una cuenta
+      unique: true,
       references: {
         model: Usuario,
         key: 'id',
@@ -70,6 +77,6 @@ Cuenta.init(
   }
 );
 
-// Establecemos la Relación 1 a 1
+// 5. Establecemos la Relacion 1 a 1
 Usuario.hasOne(Cuenta, { foreignKey: 'usuario_id' });
 Cuenta.belongsTo(Usuario, { foreignKey: 'usuario_id' });
