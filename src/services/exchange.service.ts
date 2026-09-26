@@ -1,7 +1,7 @@
 export class ExchangeService {
-  private static ratesCache: Record | null = null;
+  private static ratesCache: Record <string, number> | null = null;
   private static lastUpdate: number = 0;
-  private static readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+  private static readonly CACHE_TTL = 30 * 60 * 1000;
 
   static async getRates() {
     const now = Date.now();
