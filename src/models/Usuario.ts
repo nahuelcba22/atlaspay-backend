@@ -10,7 +10,7 @@ interface UsuarioAttributes {
   fecha_registro: Date;
 }
 
-// 2. Definimos qué campos son opcionales al CREAR un usuario (id y fecha se autogeneran)
+// 2. Definimos qué campos son opcionales al CREAR un usuario
 interface UsuarioCreationAttributes {
   id?: string;
   nombre: string;
