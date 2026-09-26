@@ -22,7 +22,7 @@ interface CuentaCreationAttributes {
   estado?: string;
 }
 
-// 3. Creamos la clase (ESTO ES LO QUE FALTABA)
+// 3. Creamos la clase
 export class Cuenta extends Model implements CuentaAttributes {
   public declare id: string;
   public declare usuario_id: string;
