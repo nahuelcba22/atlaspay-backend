@@ -19,8 +19,9 @@ describe('Rutas de Transferencias', () => {
     const reqDestino = await request(app).post('/api/usuarios').send(userDestino);
     const cvuDestino = reqDestino.body.data.cuenta.cvu;
 
+    // AQUI ESTA LA CORRECCION: saldo_ars
     await Cuenta.update(
-      { saldo: 1000 },
+      { saldo_ars: 1000 } as any,
       { where: { cvu: cvuOrigen } }
     );
 
@@ -40,8 +41,9 @@ describe('Rutas de Transferencias', () => {
     const cuentaOrigenPost = await Cuenta.findOne({ where: { cvu: cvuOrigen } });
     const cuentaDestinoPost = await Cuenta.findOne({ where: { cvu: cvuDestino } });
 
-    expect(Number(cuentaOrigenPost?.saldo)).toBe(700); // Tenía 1000 - 300
-    expect(Number(cuentaDestinoPost?.saldo)).toBe(300); // Tenía 0 + 300
+    // AQUI ESTAN LAS CORRECCIONES: saldo_ars
+    expect(Number((cuentaOrigenPost as any)?.saldo_ars)).toBe(700); // Tenía 1000 - 300
+    expect(Number((cuentaDestinoPost as any)?.saldo_ars)).toBe(300); // Tenía 0 + 300
   }, 15000);
 
  it('Debería rechazar la transferencia si el saldo es insuficiente', async () => {
@@ -53,7 +55,7 @@ describe('Rutas de Transferencias', () => {
       email: userSinPlata.email, password: userSinPlata.password
     })).body.token;
 
-    // 2. Creamos un usuario destino real para que pase la validación de existencia
+    // 2. Creamos un usuario destino para que pase la validación de existencia
     const userDestinoValido = { nombre: 'Destinatario', email: `dest_${Date.now()}@atlaspay.com`, password: '123' };
     const reqDestino = await request(app).post('/api/usuarios').send(userDestinoValido);
     const cvuDestinoReal = reqDestino.body.data.cuenta.cvu;
@@ -70,5 +72,25 @@ describe('Rutas de Transferencias', () => {
 
     expect(resRechazo.statusCode).toBe(400);
     expect(resRechazo.body.error).toBe('Saldo insuficiente');
+  });
+
+  it('Debería obtener el historial de transferencias del usuario', async () => {
+    // 1. Creamos un usuario nuevo y obtenemos su token
+    const userHistorial = { nombre: 'Lector Historial', email: `historial_${Date.now()}@atlaspay.com`, password: '123' };
+    await request(app).post('/api/usuarios').send(userHistorial);
+    
+    const token = (await request(app).post('/api/usuarios/login').send({
+      email: userHistorial.email, password: userHistorial.password
+    })).body.token;
+
+    // 2. Consultamos el endpoint GET de transferencias
+    const res = await request(app)
+      .get('/api/transferencias')
+      .set('Authorization', `Bearer ${token}`);
+
+    // 3. Verificamos que responda 200 y traiga un arreglo
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('Historial obtenido con exito');
+    expect(Array.isArray(res.body.transferencias)).toBe(true);
   });
 });
