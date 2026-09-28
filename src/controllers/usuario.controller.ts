@@ -10,7 +10,16 @@ export const crearUsuario = async (req: any, res: any) => {
       message: 'Usuario y cuenta creados con exito',
       data: {
         usuario: { id: nuevoUsuario.id, nombre: nuevoUsuario.nombre, email: nuevoUsuario.email },
-        cuenta: { cvu: nuevaCuenta.cvu, alias: nuevaCuenta.alias, saldo: nuevaCuenta.saldo }
+        cuenta: { 
+          cvu: nuevaCuenta.cvu, 
+          alias: nuevaCuenta.alias, 
+          saldos: {
+            ARS: nuevaCuenta.saldo_ars,
+            USD: nuevaCuenta.saldo_usd,
+            EUR: nuevaCuenta.saldo_eur,
+            PEN: nuevaCuenta.saldo_pen
+          }
+        }
       }
     });
   } catch (error) {

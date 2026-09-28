@@ -19,7 +19,9 @@ export const obtenerHistorial = async (usuarioId: number) => {
 };
 
 export const procesarTransferencia = async (usuarioId: number, cvu_destino: string, monto: number, motivo: string) => {
-  if (!monto || monto <= 0) throw new Error('Monto invalido');
+  // 1. Aseguramos que el monto sea un número válido
+  const montoNum = Number(monto);
+  if (!montoNum || montoNum <= 0) throw new Error('Monto invalido');
 
   const t = await sequelize.transaction();
   try {
@@ -30,18 +32,34 @@ export const procesarTransferencia = async (usuarioId: number, cvu_destino: stri
     if (!cuentaDestino) throw new Error('Cuenta destino no encontrada');
 
     if (cuentaOrigen.id === cuentaDestino.id) throw new Error('Auto-transferencia no permitida');
-    if (cuentaOrigen.saldo < monto) throw new Error('Saldo insuficiente');
 
-    cuentaOrigen.saldo = Number(cuentaOrigen.saldo) - Number(monto);
-    cuentaDestino.saldo = Number(cuentaDestino.saldo) + Number(monto);
+    // 2. Extraemos los saldos de la columna correcta
+    const saldoOrigen = Number((cuentaOrigen as any).saldo_ars ?? 0);
+    const saldoDestino = Number((cuentaDestino as any).saldo_ars ?? 0);
 
-    await cuentaOrigen.save({ transaction: t });
-    await cuentaDestino.save({ transaction: t });
+    // 3. Validamos matemáticamente
+    if (saldoOrigen < montoNum) throw new Error('Saldo insuficiente');
+
+    // 4. Actualizamos la columna correcta
+    await Cuenta.update(
+      { saldo_ars: saldoOrigen - montoNum } as any,
+      { where: { id: (cuentaOrigen as any).id }, transaction: t }
+    );
+    
+    await Cuenta.update(
+      { saldo_ars: saldoDestino + montoNum } as any,
+      { where: { id: (cuentaDestino as any).id }, transaction: t }
+    );
+    
+    await Cuenta.update(
+      { saldo: saldoDestino + montoNum } as any,
+      { where: { id: (cuentaDestino as any).id }, transaction: t }
+    );
 
     const nuevaTransferencia = await Transferencia.create({
-      cuenta_origen_id: cuentaOrigen.id,
-      cuenta_destino_id: cuentaDestino.id,
-      monto: monto,
+      cuenta_origen_id: (cuentaOrigen as any).id,
+      cuenta_destino_id: (cuentaDestino as any).id,
+      monto: montoNum,
       motivo: motivo || 'Varias'
     }, { transaction: t });
 

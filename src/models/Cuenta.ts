@@ -2,37 +2,42 @@ import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../db';
 import { Usuario } from './Usuario'; 
 
-// 1. Definimos la estructura de datos
 interface CuentaAttributes {
   id: string;
   usuario_id: string;
   cvu: string;
   alias: string;
-  saldo: number;
+  saldo_ars: number;
+  saldo_usd: number;
+  saldo_eur: number;
+  saldo_pen: number;
   estado: string;
 }
 
-// 2. Campos opcionales al crear
 interface CuentaCreationAttributes {
   id?: string;
   usuario_id: string;
   cvu: string;
   alias: string;
-  saldo?: number;
+  saldo_ars?: number;
+  saldo_usd?: number;
+  saldo_eur?: number;
+  saldo_pen?: number;
   estado?: string;
 }
 
-// 3. Creamos la clase
 export class Cuenta extends Model implements CuentaAttributes {
   public declare id: string;
   public declare usuario_id: string;
   public declare cvu: string;
   public declare alias: string;
-  public declare saldo: number;
+  public declare saldo_ars: number;
+  public declare saldo_usd: number;
+  public declare saldo_eur: number;
+  public declare saldo_pen: number;
   public declare estado: string;
 }
 
-// 4. Inicializamos las columnas
 Cuenta.init(
   {
     id: {
@@ -59,8 +64,23 @@ Cuenta.init(
       allowNull: false,
       unique: true,
     },
-    saldo: {
-      type: DataTypes.DECIMAL(10, 2),
+    saldo_ars: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+    },
+    saldo_usd: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+    },
+    saldo_eur: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+    },
+    saldo_pen: {
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
       defaultValue: 0.00,
     },
@@ -77,6 +97,5 @@ Cuenta.init(
   }
 );
 
-// 5. Establecemos la Relacion 1 a 1
 Usuario.hasOne(Cuenta, { foreignKey: 'usuario_id' });
 Cuenta.belongsTo(Usuario, { foreignKey: 'usuario_id' });

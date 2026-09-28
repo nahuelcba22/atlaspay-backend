@@ -19,8 +19,9 @@ describe('Rutas de Transferencias', () => {
     const reqDestino = await request(app).post('/api/usuarios').send(userDestino);
     const cvuDestino = reqDestino.body.data.cuenta.cvu;
 
+    // AQUI ESTA LA CORRECCION: saldo_ars
     await Cuenta.update(
-      { saldo: 1000 },
+      { saldo_ars: 1000 } as any,
       { where: { cvu: cvuOrigen } }
     );
 
@@ -40,8 +41,9 @@ describe('Rutas de Transferencias', () => {
     const cuentaOrigenPost = await Cuenta.findOne({ where: { cvu: cvuOrigen } });
     const cuentaDestinoPost = await Cuenta.findOne({ where: { cvu: cvuDestino } });
 
-    expect(Number(cuentaOrigenPost?.saldo)).toBe(700); // Tenía 1000 - 300
-    expect(Number(cuentaDestinoPost?.saldo)).toBe(300); // Tenía 0 + 300
+    // AQUI ESTAN LAS CORRECCIONES: saldo_ars
+    expect(Number((cuentaOrigenPost as any)?.saldo_ars)).toBe(700); // Tenía 1000 - 300
+    expect(Number((cuentaDestinoPost as any)?.saldo_ars)).toBe(300); // Tenía 0 + 300
   }, 15000);
 
  it('Debería rechazar la transferencia si el saldo es insuficiente', async () => {
@@ -71,6 +73,7 @@ describe('Rutas de Transferencias', () => {
     expect(resRechazo.statusCode).toBe(400);
     expect(resRechazo.body.error).toBe('Saldo insuficiente');
   });
+
   it('Debería obtener el historial de transferencias del usuario', async () => {
     // 1. Creamos un usuario nuevo y obtenemos su token
     const userHistorial = { nombre: 'Lector Historial', email: `historial_${Date.now()}@atlaspay.com`, password: '123' };
