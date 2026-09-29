@@ -7,6 +7,7 @@ interface TransferenciaAttributes {
   cuenta_origen_id: string;
   cuenta_destino_id: string;
   monto: number;
+  moneda: string;
   motivo: string;
   fecha: Date;
 }
@@ -16,6 +17,7 @@ interface TransferenciaCreationAttributes {
   cuenta_origen_id: string;
   cuenta_destino_id: string;
   monto: number;
+  moneda: string;
   motivo?: string;
   fecha?: Date;
 }
@@ -25,6 +27,7 @@ export class Transferencia extends Model implements TransferenciaAttributes {
   public declare cuenta_origen_id: string;
   public declare cuenta_destino_id: string;
   public declare monto: number;
+  public declare moneda: string;
   public declare motivo: string;
   public declare readonly fecha: Date;
 }
@@ -53,8 +56,16 @@ Transferencia.init(
       },
     },
     monto: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2), // Actualizado a 15,2 para coincidir con el modelo Cuenta
       allowNull: false,
+    },
+    moneda: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'ARS',
+      validate: {
+        isIn: [['ARS', 'USD', 'EUR', 'PEN']],
+      },
     },
     motivo: {
       type: DataTypes.STRING,
