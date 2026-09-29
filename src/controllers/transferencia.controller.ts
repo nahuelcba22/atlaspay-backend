@@ -16,12 +16,21 @@ export const getTransferencias = async (req: any, res: any) => {
 
 export const crearTransferencia = async (req: any, res: any) => {
   try {
-    const { cvu_destino, monto, motivo } = req.body;
-    const comprobante = await procesarTransferencia(req.usuario.id, cvu_destino, monto, motivo);
+    const { cvu_destino, monto, motivo, moneda } = req.body;
+    
+    // Pasamos la moneda al servicio
+    const comprobante = await procesarTransferencia(req.usuario.id, cvu_destino, monto, motivo, moneda);
     
     res.status(200).json({ message: 'Transferencia realizada con exito', comprobante });
   } catch (error: any) {
-    const mensajesCliente = ['Monto invalido', 'Cuenta origen no encontrada', 'Cuenta destino no encontrada', 'Auto-transferencia no permitida', 'Saldo insuficiente'];
+    const mensajesCliente = [
+      'Monto invalido', 
+      'Moneda invalida',
+      'Cuenta origen no encontrada', 
+      'Cuenta destino no encontrada', 
+      'Auto-transferencia no permitida', 
+      'Saldo insuficiente'
+    ];
     
     if (mensajesCliente.includes(error.message)) {
       res.status(400).json({ error: error.message });

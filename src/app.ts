@@ -5,10 +5,12 @@ import morgan from 'morgan';
 import usuariosRoutes from './routes/usuarios.routes';
 import cuentasRoutes from './routes/cuentas.routes';
 import transferenciasRoutes from './routes/transferencias.routes';
-import exchangeRoutes from './routes/exchange.routes'; // <-- 1. AGREGÁ ESTA LÍNEA
+import exchangeRoutes from './routes/exchange.routes';
+import botRoutes from './routes/bot.routes';
 
 const app = express();
 
+app.use('/api/bot', botRoutes);
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
@@ -20,6 +22,6 @@ app.get('/api/health', (req: any, res: any) => {
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/cuentas', cuentasRoutes);
 app.use('/api/transferencias', transferenciasRoutes);
-app.use('/api/exchange', exchangeRoutes); // <-- 2. Y AGREGÁ ESTA LÍNEA
+app.use('/api/exchange', exchangeRoutes);
 
 export default app;
