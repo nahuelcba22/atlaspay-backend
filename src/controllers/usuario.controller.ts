@@ -11,13 +11,13 @@ export const crearUsuario = async (req: any, res: any) => {
       data: {
         usuario: { id: nuevoUsuario.id, nombre: nuevoUsuario.nombre, email: nuevoUsuario.email },
         cuenta: { 
-          cvu: nuevaCuenta.cvu, 
-          alias: nuevaCuenta.alias, 
+          cvu: (nuevaCuenta as any).cvu, 
+          alias: (nuevaCuenta as any).alias, 
           saldos: {
-            ARS: nuevaCuenta.saldo_ars,
-            USD: nuevaCuenta.saldo_usd,
-            EUR: nuevaCuenta.saldo_eur,
-            PEN: nuevaCuenta.saldo_pen
+            ARS: Number((nuevaCuenta as any).saldo_ars ?? 0),
+            USD: Number((nuevaCuenta as any).saldo_usd ?? 0),
+            EUR: Number((nuevaCuenta as any).saldo_eur ?? 0),
+            PEN: Number((nuevaCuenta as any).saldo_pen ?? 0)
           }
         }
       }

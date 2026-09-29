@@ -3,7 +3,18 @@ import { Cuenta } from '../models/Cuenta';
 import { Transferencia } from '../models/Transferencia';
 import { Op } from 'sequelize';
 
-export const obtenerHistorial = async (usuarioId: number) => {
+// Helper para mapear la moneda a la columna correcta en la base de datos
+const getColumnaSaldo = (moneda: string) => {
+  const mapeo: { [key: string]: string } = {
+    'ARS': 'saldo_ars',
+    'USD': 'saldo_usd',
+    'EUR': 'saldo_eur',
+    'PEN': 'saldo_pen'
+  };
+  return mapeo[moneda.toUpperCase()];
+};
+
+export const obtenerHistorial = async (usuarioId: string) => {
   const cuenta = await Cuenta.findOne({ where: { usuario_id: usuarioId } });
   if (!cuenta) throw new Error('Cuenta no encontrada');
 
@@ -18,41 +29,54 @@ export const obtenerHistorial = async (usuarioId: number) => {
   });
 };
 
-export const procesarTransferencia = async (usuarioId: number, cvu_destino: string, monto: number, motivo: string) => {
+export const procesarTransferencia = async (
+  usuarioId: string, 
+  cvu_destino: string, 
+  monto: number, 
+  motivo: string,
+  moneda: string
+) => {
   // 1. Aseguramos que el monto sea un número válido
   const montoNum = Number(monto);
   if (!montoNum || montoNum <= 0) throw new Error('Monto invalido');
 
+  const columnaSaldo = getColumnaSaldo(moneda);
+  if (!columnaSaldo) throw new Error('Moneda invalida');
+
   const t = await sequelize.transaction();
   try {
-    const cuentaOrigen = await Cuenta.findOne({ where: { usuario_id: usuarioId }, transaction: t });
+    // Bloqueamos las filas durante la transacción para evitar doble gasto en concurrencia
+    const cuentaOrigen = await Cuenta.findOne({ 
+      where: { usuario_id: usuarioId }, 
+      transaction: t,
+      lock: t.LOCK.UPDATE
+    });
     if (!cuentaOrigen) throw new Error('Cuenta origen no encontrada');
 
-    const cuentaDestino = await Cuenta.findOne({ where: { cvu: cvu_destino }, transaction: t });
+    const cuentaDestino = await Cuenta.findOne({ 
+      where: { cvu: cvu_destino }, 
+      transaction: t,
+      lock: t.LOCK.UPDATE
+    });
     if (!cuentaDestino) throw new Error('Cuenta destino no encontrada');
 
     if (cuentaOrigen.id === cuentaDestino.id) throw new Error('Auto-transferencia no permitida');
 
-    // 2. Extraemos los saldos de la columna correcta
-    const saldoOrigen = Number((cuentaOrigen as any).saldo_ars ?? 0);
-    const saldoDestino = Number((cuentaDestino as any).saldo_ars ?? 0);
+    // 2. Extraemos los saldos de la columna correcta de forma dinámica
+    const saldoOrigen = Number((cuentaOrigen as any)[columnaSaldo] ?? 0);
+    const saldoDestino = Number((cuentaDestino as any)[columnaSaldo] ?? 0);
 
     // 3. Validamos matemáticamente
     if (saldoOrigen < montoNum) throw new Error('Saldo insuficiente');
 
     // 4. Actualizamos la columna correcta
     await Cuenta.update(
-      { saldo_ars: saldoOrigen - montoNum } as any,
+      { [columnaSaldo]: saldoOrigen - montoNum } as any,
       { where: { id: (cuentaOrigen as any).id }, transaction: t }
     );
     
     await Cuenta.update(
-      { saldo_ars: saldoDestino + montoNum } as any,
-      { where: { id: (cuentaDestino as any).id }, transaction: t }
-    );
-    
-    await Cuenta.update(
-      { saldo: saldoDestino + montoNum } as any,
+      { [columnaSaldo]: saldoDestino + montoNum } as any,
       { where: { id: (cuentaDestino as any).id }, transaction: t }
     );
 
@@ -60,6 +84,7 @@ export const procesarTransferencia = async (usuarioId: number, cvu_destino: stri
       cuenta_origen_id: (cuentaOrigen as any).id,
       cuenta_destino_id: (cuentaDestino as any).id,
       monto: montoNum,
+      moneda: moneda.toUpperCase(),
       motivo: motivo || 'Varias'
     }, { transaction: t });
 
