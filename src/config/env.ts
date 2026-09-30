@@ -23,5 +23,6 @@ if (Number.isNaN(port)) {
 export const env = {
   DATABASE_URL: getRequiredEnv('DATABASE_URL'),
   JWT_SECRET: getRequiredEnv('JWT_SECRET'),
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? '',
   PORT: port,
 };
