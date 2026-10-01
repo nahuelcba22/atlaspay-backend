@@ -56,7 +56,7 @@ Transferencia.init(
       },
     },
     monto: {
-      type: DataTypes.DECIMAL(15, 2), // Actualizado a 15,2 para coincidir con el modelo Cuenta
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
     },
     moneda: {

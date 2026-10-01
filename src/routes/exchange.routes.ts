@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { getExchangeRates } from '../controllers/exchange.controller';
-// import { verifyToken } from '../middlewares/auth.middleware'; // Opcional por si lo quieren proteger
+import { getExchangeRates, realizarExchange } from '../controllers/exchange.controller';
+import { validarToken } from '../middlewares/validarToken'; 
 
 const router = Router();
 
-// Endpoint que va a consumir el frontend
-router.get('/rates', getExchangeRates); // Si usan middleware sería: router.get('/rates', verifyToken, getExchangeRates);
+router.get('/rates', getExchangeRates); 
+router.post('/procesar', validarToken, realizarExchange);
 
 export default router;
