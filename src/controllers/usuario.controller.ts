@@ -22,8 +22,12 @@ export const crearUsuario = async (req: any, res: any) => {
         }
       }
     });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    if (error.message === 'El correo ya está registrado' || error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: 'El correo electrónico ya se encuentra registrado.' });
+    }
+
+    console.error('Error al crear usuario:', error);
     res.status(500).json({ error: 'Hubo un problema al crear el usuario y la cuenta' });
   }
 };
