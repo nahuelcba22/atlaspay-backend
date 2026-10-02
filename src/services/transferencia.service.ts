@@ -3,7 +3,6 @@ import { Cuenta } from '../models/Cuenta';
 import { Transferencia } from '../models/Transferencia';
 import { Op } from 'sequelize';
 
-// Helper para mapear la moneda a la columna correcta en la base de datos
 const getColumnaSaldo = (moneda: string) => {
   const mapeo: { [key: string]: string } = {
     'ARS': 'saldo_ars',
