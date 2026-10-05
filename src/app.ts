@@ -8,6 +8,8 @@ import transferenciasRoutes from './routes/transferencias.routes';
 import exchangeRoutes from './routes/exchange.routes';
 import botRoutes from './routes/bot.routes';
 
+import profileRoutes from './routes/profile.routes';
+
 const app = express();
 
 app.use(cors());
@@ -23,5 +25,7 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/cuentas', cuentasRoutes);
 app.use('/api/transferencias', transferenciasRoutes);
 app.use('/api/exchange', exchangeRoutes);
+
+app.use('/api/profile', profileRoutes);
 
 export default app;
