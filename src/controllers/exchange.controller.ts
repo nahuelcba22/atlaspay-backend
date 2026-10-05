@@ -1,7 +1,15 @@
 import { Request, Response } from 'express';
 import { ExchangeService } from '../services/exchange.service';
+import {
+  notifyExchangeFailure,
+  notifyExchangeSuccess,
+} from '../services/exchangeEmail.service';
+import { validateExchangeRequest } from '../utils/exchangeValidation';
 
-export const getExchangeRates = async (req: Request, res: Response) => {
+export const getExchangeRates = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const data = await ExchangeService.getRates();
 
@@ -18,62 +26,62 @@ export const getExchangeRates = async (req: Request, res: Response) => {
   }
 };
 
-export const realizarExchange = async (req: Request, res: Response) => {
+export const realizarExchange = async (
+  req: Request,
+  res: Response,
+) => {
+  const userId =
+    (req as any).usuario?.id || (req as any).user?.id;
+
+  const { montoVenta, monedaOrigen, monedaDestino } = req.body;
+
   try {
-    const usuario_id = (req as any).usuario?.id || (req as any).user?.id;
+    const { rates } = await ExchangeService.getRates();
 
-    const { montoVenta, monedaOrigen, monedaDestino } = req.body;
-
-    if (!montoVenta || !monedaOrigen || !monedaDestino) {
-      return res.status(400).json({
-        error: 'Faltan datos (montoVenta, monedaOrigen, monedaDestino)'
-      });
-    }
-
-    if (montoVenta <= 0) {
-      return res.status(400).json({ error: 'El monto debe ser mayor a 0' });
-    }
-
-    const ratesData = await ExchangeService.getRates();
-    const rates = ratesData.rates;
-
-    if (typeof monedaOrigen !== 'string' || !(monedaOrigen in rates)) {
-      return res.status(400).json({ error: 'Moneda de origen no soportada' });
-    }
-
-    const monedaOrigenKey = monedaOrigen as keyof typeof rates;
-
-    const montoEnUSD = montoVenta / rates[monedaOrigenKey];
-    const MINIMO_USD = 0.1;
-
-  if (montoEnUSD < MINIMO_USD) {
-      let mensajeError = 'El monto mínimo por operación es de $' + MINIMO_USD + ' USD';
-      
-      if (monedaOrigenKey !== 'USD') {
-        const minimoEnOrigen = (MINIMO_USD * rates[monedaOrigenKey]).toFixed(2);
-        mensajeError += ' (Aprox. $' + minimoEnOrigen + ' ' + monedaOrigenKey + ')';
-      } else if (monedaDestino in rates && monedaDestino !== 'USD') {
-        const monedaDestinoKey = monedaDestino as keyof typeof rates;
-        const minimoEnDestino = (MINIMO_USD * rates[monedaDestinoKey]).toFixed(2);
-        mensajeError += ' (Aprox. $' + minimoEnDestino + ' ' + monedaDestinoKey + ')';
-      }
-      
-      return res.status(400).json({
-        error: mensajeError
-      });
-    }
-    const resultado = await ExchangeService.procesarExchange(
-      usuario_id,
+    const validated = validateExchangeRequest(
       montoVenta,
-      monedaOrigenKey,
-      monedaDestino
+      monedaOrigen,
+      monedaDestino,
+      rates,
     );
+
+    const resultado = await ExchangeService.procesarExchange(
+      userId,
+      montoVenta,
+      validated.monedaOrigen,
+      validated.monedaDestino,
+    );
+
+    notifyExchangeSuccess({
+      userId,
+      amount: Number(montoVenta),
+      currency: validated.monedaOrigen,
+      destinationAmount:
+        Number(montoVenta) * validated.tipoDeCambio,
+      destinationCurrency: validated.monedaDestino,
+      exchangeRate: validated.tipoDeCambio,
+      transactionId: resultado.historial.id,
+      date: resultado.historial.fecha?.toISOString(),
+    });
 
     return res.status(200).json({
       mensaje: 'Exchange realizado con éxito',
-      operacion: resultado
+      operacion: resultado,
     });
   } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+    if (userId) {
+      notifyExchangeFailure({
+        userId,
+        amount: Number(montoVenta) || 0,
+        currency: monedaOrigen || 'N/D',
+        destinationCurrency: monedaDestino,
+        date: new Date().toISOString(),
+        errorMessage: error.message,
+      });
+    }
+
+    return res.status(400).json({
+      error: error.message,
+    });
   }
 };
