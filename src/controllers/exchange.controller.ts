@@ -3,6 +3,7 @@ import { ExchangeService } from '../services/exchange.service';
 import {
   notifyExchangeFailure,
   notifyExchangeSuccess,
+  resolveExchangeOperationType,
 } from '../services/exchangeEmail.service';
 import { validateExchangeRequest } from '../utils/exchangeValidation';
 
@@ -33,7 +34,15 @@ export const realizarExchange = async (
   const userId =
     (req as any).usuario?.id || (req as any).user?.id;
 
-  const { montoVenta, monedaOrigen, monedaDestino } = req.body;
+  const {
+    montoVenta,
+    monedaOrigen,
+    monedaDestino,
+    tipoOperacion,
+  } = req.body;
+
+  const operationType =
+    resolveExchangeOperationType(tipoOperacion);
 
   try {
     const { rates } = await ExchangeService.getRates();
@@ -52,8 +61,10 @@ export const realizarExchange = async (
       validated.monedaDestino,
     );
 
+    // Envía el mail correspondiente a cambio, compra o venta.
     notifyExchangeSuccess({
       userId,
+      operationType,
       amount: Number(montoVenta),
       currency: validated.monedaOrigen,
       destinationAmount:
@@ -70,8 +81,10 @@ export const realizarExchange = async (
     });
   } catch (error: any) {
     if (userId) {
+      // También conserva el tipo correcto en operaciones fallidas.
       notifyExchangeFailure({
         userId,
+        operationType,
         amount: Number(montoVenta) || 0,
         currency: monedaOrigen || 'N/D',
         destinationCurrency: monedaDestino,
