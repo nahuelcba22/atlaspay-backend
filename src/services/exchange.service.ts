@@ -34,7 +34,6 @@ export class ExchangeService {
       
       const data = await response.json();
 
-      // Filtramos las cotizaciones que nos interesan
       const cotizacionesFiltradas = {
         USD: 1,
         ARS: data.rates.ARS,
@@ -64,7 +63,6 @@ export class ExchangeService {
     }
   }
 
-  // NUEVO MÉTODO INTEGRADO
   static async procesarExchange(
     usuario_id: string, 
     montoVenta: number, 
@@ -72,7 +70,6 @@ export class ExchangeService {
     monedaDestino: 'ARS' | 'USD' | 'EUR' | 'PEN'
   ) {
     try {
-      // 1. Obtenemos las cotizaciones en tiempo real usando tu propio método
       const ratesData = await this.getRates();
       const rates = ratesData.rates;
 
@@ -80,11 +77,8 @@ export class ExchangeService {
         throw new Error('Moneda de origen o destino no soportada');
       }
 
-      // 2. Calculamos la tasa de conversión cruzada (Cross Rate)
-      // Ej: Si vendes ARS para comprar USD -> (1 / 1200)
       const tipoDeCambio = rates[monedaDestino] / rates[monedaOrigen];
 
-      // 3. Iniciamos la transacción
       const resultado = await sequelize.transaction(async (t) => {
         
         const cuenta = await Cuenta.findOne({ 
@@ -98,7 +92,6 @@ export class ExchangeService {
         const columnaOrigen = `saldo_${monedaOrigen.toLowerCase()}` as keyof Cuenta;
         const columnaDestino = `saldo_${monedaDestino.toLowerCase()}` as keyof Cuenta;
 
-        // Solución Matemática con Enteros (Centavos)
         const saldoOrigenActual = Math.round(parseFloat(cuenta[columnaOrigen] as string) * 100);
         const saldoDestinoActual = Math.round(parseFloat(cuenta[columnaDestino] as string) * 100);
         
@@ -109,13 +102,11 @@ export class ExchangeService {
           throw new Error(`Fondos insuficientes en ${monedaOrigen}`);
         }
 
-        // Aplicamos los nuevos saldos
         (cuenta as any)[columnaOrigen] = (saldoOrigenActual - ventaCentavos) / 100;
         (cuenta as any)[columnaDestino] = (saldoDestinoActual + compraCentavos) / 100;
 
         await cuenta.save({ transaction: t });
 
-        // Registramos en el historial
         const historial = await Transferencia.create({
           cuenta_origen_id: cuenta.id,
           cuenta_destino_id: cuenta.id,

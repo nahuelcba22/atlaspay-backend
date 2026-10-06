@@ -1,11 +1,18 @@
 import { Request, Response } from 'express';
 import { ExchangeService } from '../services/exchange.service';
+import {
+  notifyExchangeFailure,
+  notifyExchangeSuccess,
+} from '../services/exchangeEmail.service';
+import { validateExchangeRequest } from '../utils/exchangeValidation';
 
-// 1. Función original: Solo devuelve las cotizaciones para mostrarlas en el frontend
-export const getExchangeRates = async (req: Request, res: Response) => {
+export const getExchangeRates = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const data = await ExchangeService.getRates();
-    
+
     res.status(200).json({
       success: true,
       base: 'USD',
@@ -19,33 +26,62 @@ export const getExchangeRates = async (req: Request, res: Response) => {
   }
 };
 
-// 2. NUEVA FUNCIÓN: Ejecuta la lógica matemática y la transacción en la base de datos
-export const realizarExchange = async (req: Request, res: Response) => {
+export const realizarExchange = async (
+  req: Request,
+  res: Response,
+) => {
+  const userId =
+    (req as any).usuario?.id || (req as any).user?.id;
+
+  const { montoVenta, monedaOrigen, monedaDestino } = req.body;
+
   try {
-    // Tomamos el ID del usuario desde el token. 
-    // Uso un fallback (usuario o user) dependiendo de cómo lo hayas nombrado en tu middleware validarToken
-    const usuario_id = (req as any).usuario?.id || (req as any).user?.id; 
-    
-    const { montoVenta, monedaOrigen, monedaDestino } = req.body;
+    const { rates } = await ExchangeService.getRates();
 
-    // Validación básica
-    if (!montoVenta || !monedaOrigen || !monedaDestino) {
-      return res.status(400).json({ error: 'Faltan datos (montoVenta, monedaOrigen, monedaDestino)' });
-    }
-
-    // Llamamos al servicio
-    const resultado = await ExchangeService.procesarExchange(
-      usuario_id, 
-      montoVenta, 
-      monedaOrigen, 
-      monedaDestino
+    const validated = validateExchangeRequest(
+      montoVenta,
+      monedaOrigen,
+      monedaDestino,
+      rates,
     );
+
+    const resultado = await ExchangeService.procesarExchange(
+      userId,
+      montoVenta,
+      validated.monedaOrigen,
+      validated.monedaDestino,
+    );
+
+    notifyExchangeSuccess({
+      userId,
+      amount: Number(montoVenta),
+      currency: validated.monedaOrigen,
+      destinationAmount:
+        Number(montoVenta) * validated.tipoDeCambio,
+      destinationCurrency: validated.monedaDestino,
+      exchangeRate: validated.tipoDeCambio,
+      transactionId: resultado.historial.id,
+      date: resultado.historial.fecha?.toISOString(),
+    });
 
     return res.status(200).json({
       mensaje: 'Exchange realizado con éxito',
-      operacion: resultado
+      operacion: resultado,
     });
   } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+    if (userId) {
+      notifyExchangeFailure({
+        userId,
+        amount: Number(montoVenta) || 0,
+        currency: monedaOrigen || 'N/D',
+        destinationCurrency: monedaDestino,
+        date: new Date().toISOString(),
+        errorMessage: error.message,
+      });
+    }
+
+    return res.status(400).json({
+      error: error.message,
+    });
   }
 };

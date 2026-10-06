@@ -9,9 +9,10 @@ import exchangeRoutes from './routes/exchange.routes';
 import botRoutes from './routes/bot.routes';
 import adminRoutes from './routes/admin.routes'; // <-- 1. Importas las nuevas rutas
 
+import profileRoutes from './routes/profile.routes';
+
 const app = express();
 
-app.use('/api/bot', botRoutes);
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
@@ -20,10 +21,13 @@ app.get('/api/health', (req: any, res: any) => {
   res.status(200).json({ message: 'Servidor de Atlaspay funcionando correctamente' });
 });
 
+app.use('/api/bot', botRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/cuentas', cuentasRoutes);
 app.use('/api/transferencias', transferenciasRoutes);
 app.use('/api/exchange', exchangeRoutes);
 app.use('/api/admin', adminRoutes); // <-- 2. Conectas la ruta para el dashboard
+
+app.use('/api/profile', profileRoutes);
 
 export default app;
