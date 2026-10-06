@@ -1,7 +1,5 @@
-import {
-  obtenerHistorial,
-  procesarTransferencia,
-} from '../services/transferencia.service';
+import { obtenerHistorial } from '../services/transferenciaHistory.service';
+import { procesarTransferencia } from '../services/transferencia.service';
 import { sendTransactionEmail } from '../services/transactionEmail.service';
 
 export const getTransferencias = async (req: any, res: any) => {
@@ -14,12 +12,15 @@ export const getTransferencias = async (req: any, res: any) => {
     });
   } catch (error: any) {
     if (error.message === 'Cuenta no encontrada') {
-      res.status(404).json({ error: error.message });
-    } else {
-      res.status(500).json({
-        error: 'Hubo un problema al consultar el historial',
+      res.status(404).json({
+        error: error.message,
       });
+      return;
     }
+
+    res.status(500).json({
+      error: 'Hubo un problema al consultar el historial',
+    });
   }
 };
 
@@ -35,7 +36,7 @@ export const crearTransferencia = async (req: any, res: any) => {
       moneda,
     );
 
-    // Notifica la transferencia exitosa con el ID generado en DB.
+    // Notifica la transferencia exitosa con los datos guardados.
     void sendTransactionEmail({
       userId: req.usuario.id,
       status: 'SUCCESS',
@@ -57,7 +58,7 @@ export const crearTransferencia = async (req: any, res: any) => {
   } catch (error: any) {
     const amount = Number(monto);
 
-    // Notifica el intento fallido sin afectar la respuesta original.
+    // El fallo del email no modifica el resultado de la transferencia.
     void sendTransactionEmail({
       userId: req.usuario.id,
       status: 'FAILED',
@@ -73,8 +74,8 @@ export const crearTransferencia = async (req: any, res: any) => {
       errorMessage: error.message,
     });
 
-    const mensajesCliente = [
-      'Monto invalido',
+    const clientErrors = [
+      'El monto mínimo es 0.1',
       'Moneda invalida',
       'Cuenta origen no encontrada',
       'Cuenta destino no encontrada',
@@ -82,16 +83,17 @@ export const crearTransferencia = async (req: any, res: any) => {
       'Saldo insuficiente',
     ];
 
-    if (mensajesCliente.includes(error.message)) {
+    if (clientErrors.includes(error.message)) {
       res.status(400).json({
         error: error.message,
       });
-    } else {
-      console.error('Error en transferencia:', error);
-
-      res.status(500).json({
-        error: 'Hubo un problema al procesar la transferencia',
-      });
+      return;
     }
+
+    console.error('Error en transferencia:', error);
+
+    res.status(500).json({
+      error: 'Hubo un problema al procesar la transferencia',
+    });
   }
 };
