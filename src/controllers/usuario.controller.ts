@@ -51,11 +51,7 @@ export const login = async (req: any, res: any) => {
     res.status(200).json({
       message: 'Login exitoso',
       token,
-      usuario: {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        email: usuario.email,
-      },
+      usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, role: usuario.role }
     });
   } catch (error: any) {
     if (error.message === 'Credenciales invalidas') {

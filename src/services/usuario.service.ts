@@ -38,9 +38,9 @@ export const autenticarUsuario = async (email: string, password: string) => {
   }
 
   const token = jwt.sign(
-    { id: usuario.id, email: usuario.email },
-    env.JWT_SECRET,
-    { expiresIn: '24h' },
+    { id: usuario.id, email: usuario.email, role: usuario.role }, 
+    env.JWT_SECRET, 
+    { expiresIn: '24h' }
   );
 
   return { token, usuario };
