@@ -2,6 +2,13 @@ import { sequelize } from '../db';
 import { Cuenta } from '../models/Cuenta';
 import { Transferencia } from '../models/Transferencia';
 
+const nombresMoneda: Record<'ARS' | 'USD' | 'EUR' | 'PEN', string> = {
+  ARS: 'pesos argentinos',
+  USD: 'dólares estadounidenses',
+  EUR: 'euros',
+  PEN: 'soles peruanos',
+};
+
 export class ExchangeService {
   private static ratesCache: Record<'USD' | 'ARS' | 'EUR' | 'PEN', number> | null = null;
   private static lastUpdate: number = 0;
@@ -114,7 +121,7 @@ export class ExchangeService {
           cuenta_destino_id: cuenta.id,
           monto: montoVenta,
           moneda: monedaOrigen,
-          motivo: `Exchange de \({monedaOrigen} a\){monedaDestino} (Tasa: ${tipoDeCambio.toFixed(4)})`,
+          motivo: `Exchange de ${nombresMoneda[monedaOrigen]} (${monedaOrigen}) a ${nombresMoneda[monedaDestino]} (${monedaDestino}) (Tasa: ${tipoDeCambio.toFixed(4)})`,
         }, { transaction: t });
 
         return { cuenta, historial };

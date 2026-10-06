@@ -23,13 +23,13 @@ interface TransferenciaCreationAttributes {
 }
 
 export class Transferencia extends Model implements TransferenciaAttributes {
-  public declare id: string;
-  public declare cuenta_origen_id: string;
-  public declare cuenta_destino_id: string;
-  public declare monto: number;
-  public declare moneda: string;
-  public declare motivo: string;
-  public declare readonly fecha: Date;
+  declare public id: string;
+  declare public cuenta_origen_id: string;
+  declare public cuenta_destino_id: string;
+  declare public monto: number;
+  declare public moneda: string;
+  declare public motivo: string;
+  declare public readonly fecha: Date;
 }
 
 Transferencia.init(
@@ -81,5 +81,25 @@ Transferencia.init(
     sequelize,
     tableName: 'transferencias',
     timestamps: false,
-  }
+  },
 );
+
+// Relaciones para la cuenta que envía el dinero
+Cuenta.hasMany(Transferencia, {
+  as: 'transferenciasEnviadas',
+  foreignKey: 'cuenta_origen_id',
+});
+Transferencia.belongsTo(Cuenta, {
+  as: 'cuentaOrigen',
+  foreignKey: 'cuenta_origen_id',
+});
+
+// Relaciones para la cuenta que recibe el dinero
+Cuenta.hasMany(Transferencia, {
+  as: 'transferenciasRecibidas',
+  foreignKey: 'cuenta_destino_id',
+});
+Transferencia.belongsTo(Cuenta, {
+  as: 'cuentaDestino',
+  foreignKey: 'cuenta_destino_id',
+});

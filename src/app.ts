@@ -7,6 +7,7 @@ import cuentasRoutes from './routes/cuentas.routes';
 import transferenciasRoutes from './routes/transferencias.routes';
 import exchangeRoutes from './routes/exchange.routes';
 import botRoutes from './routes/bot.routes';
+import adminRoutes from './routes/admin.routes'; // <-- 1. Importas las nuevas rutas
 
 const app = express();
 
@@ -23,5 +24,6 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/cuentas', cuentasRoutes);
 app.use('/api/transferencias', transferenciasRoutes);
 app.use('/api/exchange', exchangeRoutes);
+app.use('/api/admin', adminRoutes); // <-- 2. Conectas la ruta para el dashboard
 
 export default app;
