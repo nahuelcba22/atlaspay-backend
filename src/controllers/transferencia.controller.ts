@@ -12,9 +12,7 @@ export const getTransferencias = async (req: any, res: any) => {
     });
   } catch (error: any) {
     if (error.message === 'Cuenta no encontrada') {
-      res.status(404).json({
-        error: error.message,
-      });
+      res.status(404).json({ error: error.message });
       return;
     }
 
@@ -25,19 +23,20 @@ export const getTransferencias = async (req: any, res: any) => {
 };
 
 export const crearTransferencia = async (req: any, res: any) => {
-  const { cvu_destino, monto, motivo, moneda } = req.body;
+  // "destino" acepta CVU o alias; cvu_destino se mantiene por compatibilidad.
+  const { destino, cvu_destino, monto, motivo, moneda } = req.body;
 
   try {
     const comprobante = await procesarTransferencia(
       req.usuario.id,
-      cvu_destino,
+      destino ?? cvu_destino,
       monto,
       motivo,
       moneda,
     );
 
-    // Notifica la transferencia exitosa con los datos guardados.
-    void sendTransactionEmail({
+    // Espera el diagnóstico del mail sin afectar la transferencia.
+    await sendTransactionEmail({
       userId: req.usuario.id,
       status: 'SUCCESS',
       transaction: {
@@ -58,8 +57,8 @@ export const crearTransferencia = async (req: any, res: any) => {
   } catch (error: any) {
     const amount = Number(monto);
 
-    // El fallo del email no modifica el resultado de la transferencia.
-    void sendTransactionEmail({
+    // También registra el diagnóstico de las operaciones fallidas.
+    await sendTransactionEmail({
       userId: req.usuario.id,
       status: 'FAILED',
       transaction: {
@@ -78,15 +77,15 @@ export const crearTransferencia = async (req: any, res: any) => {
       'El monto mínimo es 0.1',
       'Moneda invalida',
       'Cuenta origen no encontrada',
-      'Cuenta destino no encontrada',
+      'Debe indicar el CVU o alias de destino',
+      'No existe una cuenta con ese CVU',
+      'No existe una cuenta con ese alias',
       'Auto-transferencia no permitida',
       'Saldo insuficiente',
     ];
 
     if (clientErrors.includes(error.message)) {
-      res.status(400).json({
-        error: error.message,
-      });
+      res.status(400).json({ error: error.message });
       return;
     }
 
