@@ -27,22 +27,29 @@ interface SendTransactionEmailParams {
   errorMessage?: string;
 }
 
-// Envía al usuario los datos de una operación mediante la Vercel Function.
+// Envía la notificación y registra cada etapa para facilitar el diagnóstico.
 export async function sendTransactionEmail(
   data: SendTransactionEmailParams,
 ): Promise<void> {
   if (!env.TRANSACTION_EMAIL_URL) {
-    console.warn('TRANSACTION_EMAIL_URL todavía no está configurada.');
+    console.error('[EMAIL] Falta TRANSACTION_EMAIL_URL en el backend.');
     return;
   }
 
   try {
+    console.info('[EMAIL] Buscando usuario:', data.userId);
+
     const usuario = await Usuario.findByPk(data.userId);
 
     if (!usuario) {
-      console.error('No se encontró el usuario para enviar el email.');
+      console.error('[EMAIL] Usuario no encontrado:', data.userId);
       return;
     }
+
+    console.info('[EMAIL] Llamando a Vercel:', {
+      status: data.status,
+      type: data.transaction.type,
+    });
 
     const response = await fetch(env.TRANSACTION_EMAIL_URL, {
       method: 'POST',
@@ -58,15 +65,22 @@ export async function sendTransactionEmail(
       }),
     });
 
+    const responseBody = await response.text();
+
     if (!response.ok) {
-      console.error(
-        'Error al enviar la notificación:',
-        response.status,
-        await response.text(),
-      );
+      console.error('[EMAIL] Vercel respondió con error:', {
+        status: response.status,
+        body: responseBody,
+      });
+      return;
     }
+
+    console.info('[EMAIL] Vercel confirmó el envío:', {
+      status: response.status,
+      body: responseBody,
+    });
   } catch (error) {
     // El email nunca debe provocar el fallo de la operación financiera.
-    console.error('No se pudo enviar la notificación:', error);
+    console.error('[EMAIL] Falló la llamada backend -> Vercel:', error);
   }
 }

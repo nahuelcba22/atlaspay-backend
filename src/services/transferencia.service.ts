@@ -10,10 +10,10 @@ import {
   validateTransferAmount,
 } from './transferenciaValidation.service';
 
-// Procesa una transferencia entre dos cuentas.
+// Procesa una transferencia entre dos cuentas; el destino puede ser CVU o alias.
 export async function procesarTransferencia(
   usuarioId: string,
-  cvuDestino: string,
+  cvuOAlias: string,
   monto: number,
   motivo: string,
   moneda: string,
@@ -29,7 +29,7 @@ export async function procesarTransferencia(
     );
 
     const destino = await getDestinationAccount(
-      cvuDestino,
+      cvuOAlias,
       transaction,
     );
 

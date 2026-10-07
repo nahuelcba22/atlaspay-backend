@@ -10,6 +10,10 @@ import botRoutes from './routes/bot.routes';
 import adminRoutes from './routes/admin.routes'; // <-- 1. Importas las nuevas rutas
 
 import profileRoutes from './routes/profile.routes';
+import historialRoutes from './routes/historial.routes';
+
+// Registra las relaciones entre modelos antes de usar las rutas.
+import './models/associations';
 
 const app = express();
 
@@ -29,5 +33,6 @@ app.use('/api/exchange', exchangeRoutes);
 app.use('/api/admin', adminRoutes); // <-- 2. Conectas la ruta para el dashboard
 
 app.use('/api/profile', profileRoutes);
+app.use('/api/historial', historialRoutes);
 
 export default app;

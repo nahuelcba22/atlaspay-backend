@@ -67,7 +67,8 @@ export class ExchangeService {
     usuario_id: string, 
     montoVenta: number, 
     monedaOrigen: 'ARS' | 'USD' | 'EUR' | 'PEN', 
-    monedaDestino: 'ARS' | 'USD' | 'EUR' | 'PEN'
+    monedaDestino: 'ARS' | 'USD' | 'EUR' | 'PEN',
+    tipo: 'CAMBIO' | 'COMPRA' | 'VENTA' = 'CAMBIO'
   ) {
     try {
       const ratesData = await this.getRates();
@@ -112,6 +113,11 @@ export class ExchangeService {
           cuenta_destino_id: cuenta.id,
           monto: montoVenta,
           moneda: monedaOrigen,
+          // Datos estructurados para el historial unificado.
+          tipo,
+          monto_destino: compraCentavos / 100,
+          moneda_destino: monedaDestino,
+          tasa: tipoDeCambio,
           motivo: `Exchange de ${nombresMoneda[monedaOrigen]} (${monedaOrigen}) a ${nombresMoneda[monedaDestino]} (${monedaDestino}) (Tasa: ${tipoDeCambio.toFixed(4)})`,
         }, { transaction: t });
 

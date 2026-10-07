@@ -59,6 +59,7 @@ export const realizarExchange = async (
       montoVenta,
       validated.monedaOrigen,
       validated.monedaDestino,
+      operationType,
     );
 
     // Envía el mail correspondiente a cambio, compra o venta.

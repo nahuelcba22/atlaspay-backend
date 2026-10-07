@@ -19,19 +19,30 @@ export async function getOriginAccount(
   return account;
 }
 
-// Busca y bloquea la cuenta destino usando su CVU.
+// Busca y bloquea la cuenta destino por CVU (22 dígitos) o por alias.
 export async function getDestinationAccount(
-  cvu: string,
+  destino: string,
   transaction: Transaction,
 ) {
+  if (typeof destino !== 'string' || destino.trim() === '') {
+    throw new Error('Debe indicar el CVU o alias de destino');
+  }
+
+  const valor = destino.trim();
+  const esCvu = /^\d{22}$/.test(valor);
+
   const account = await Cuenta.findOne({
-    where: { cvu },
+    where: esCvu ? { cvu: valor } : { alias: valor.toLowerCase() },
     transaction,
     lock: transaction.LOCK.UPDATE,
   });
 
   if (!account) {
-    throw new Error('Cuenta destino no encontrada');
+    throw new Error(
+      esCvu
+        ? 'No existe una cuenta con ese CVU'
+        : 'No existe una cuenta con ese alias',
+    );
   }
 
   return account;
