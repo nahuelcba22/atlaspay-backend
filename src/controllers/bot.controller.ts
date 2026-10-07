@@ -11,6 +11,7 @@ export const conversarConBot = async (req: Request, res: Response) => {
     const respuesta = await procesarMensajeBot(mensaje);
     res.status(200).json({ success: true, data: { respuesta } });
   } catch (error: any) {
+    console.error('Error en procesarMensajeBot:', error);
     res.status(500).json({ success: false, error: error.message || 'Error en el bot' });
   }
 };

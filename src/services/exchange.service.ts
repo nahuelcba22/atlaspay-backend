@@ -68,10 +68,11 @@ export class ExchangeService {
   }
 
   static async procesarExchange(
-    usuario_id: string,
-    montoVenta: number,
-    monedaOrigen: 'ARS' | 'USD' | 'EUR' | 'PEN',
+    usuario_id: string, 
+    montoVenta: number, 
+    monedaOrigen: 'ARS' | 'USD' | 'EUR' | 'PEN', 
     monedaDestino: 'ARS' | 'USD' | 'EUR' | 'PEN',
+    tipo: 'CAMBIO' | 'COMPRA' | 'VENTA' = 'CAMBIO'
   ) {
     try {
       const ratesData = await this.getRates();
@@ -118,16 +119,18 @@ export class ExchangeService {
 
         await cuenta.save({ transaction: t });
 
-        const historial = await Transferencia.create(
-          {
-            cuenta_origen_id: cuenta.id,
-            cuenta_destino_id: cuenta.id,
-            monto: montoVenta,
-            moneda: monedaOrigen,
-            motivo: `Exchange de ${nombresMoneda[monedaOrigen]} (${monedaOrigen}) a ${nombresMoneda[monedaDestino]} (${monedaDestino}) (Tasa: ${tipoDeCambio.toFixed(4)})`,
-          },
-          { transaction: t },
-        );
+        const historial = await Transferencia.create({
+          cuenta_origen_id: cuenta.id,
+          cuenta_destino_id: cuenta.id,
+          monto: montoVenta,
+          moneda: monedaOrigen,
+          // Datos estructurados para el historial unificado.
+          tipo,
+          monto_destino: compraCentavos / 100,
+          moneda_destino: monedaDestino,
+          tasa: tipoDeCambio,
+          motivo: `Exchange de ${nombresMoneda[monedaOrigen]} (${monedaOrigen}) a ${nombresMoneda[monedaDestino]} (${monedaDestino}) (Tasa: ${tipoDeCambio.toFixed(4)})`,
+        }, { transaction: t });
 
         return { cuenta, historial };
       });
