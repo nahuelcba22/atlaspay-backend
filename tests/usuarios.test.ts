@@ -2,6 +2,16 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../src/app'; 
 
+describe('Seguridad y manejo de errores', () => {
+  it('Debe devolver cabeceras de seguridad y una respuesta 404 JSON para rutas inexistentes', async () => {
+    const res = await request(app).get('/api/ruta-que-no-existe');
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toBe('Ruta no encontrada');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+  });
+});
+
 describe('Rutas de Usuarios', () => {
 
   // 1. TEST DE REGSTRO
