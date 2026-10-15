@@ -14,12 +14,15 @@ import adminRoutes from './routes/admin.routes';
 import profileRoutes from './routes/profile.routes';
 import historialRoutes from './routes/historial.routes';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
+import { requestLogger } from './middlewares/requestLogger';
 
 // Registra las relaciones entre modelos antes de usar las rutas.
 import './models/associations';
 
 const app = express();
 
+app.disable('x-powered-by');
+app.use(requestLogger);
 app.use(helmet());
 app.use(
   cors({
