@@ -43,11 +43,19 @@ cd atlaspay-backend
 npm install
 ```
 
-4. Configurar las variables de entorno:
+4. Configurar Neon y las variables de entorno:
 
-Crear un archivo `.env` en la raíz del proyecto con las credenciales correspondientes a la base de datos y la clave secreta utilizada para JWT.
+Este proyecto usa Sequelize con `pg` y la conexión agrupada (`DATABASE_URL`) que proporciona Neon. Para enlazar el proyecto y desplegar PostgreSQL:
 
-> Las credenciales y claves privadas no deben subirse al repositorio.
+```bash
+npm i -g neon@latest
+neon init -y --org-id org-sweet-tooth-38120798 --project-id crimson-mud-46302649 --branch production --services postgres
+neon deploy
+```
+
+Neon escribe `DATABASE_URL` y `DATABASE_URL_UNPOOLED` en `.env` (o `.env.local` si no existe `.env`). La aplicación usa `DATABASE_URL`; reserva la conexión directa `DATABASE_URL_UNPOOLED` para migraciones y tareas administrativas. Configura también `JWT_SECRET` y las demás variables necesarias.
+
+> `.env` y las credenciales no deben subirse al repositorio.
 
 5. Levantar el servidor en modo desarrollo:
 
