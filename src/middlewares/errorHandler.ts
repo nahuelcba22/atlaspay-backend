@@ -17,10 +17,12 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
       ? (error as { statusCode: number }).statusCode
       : 500;
 
-  const message =
+  const errorMessage =
     typeof error.message === 'string' && error.message.length > 0
       ? error.message
       : 'Error interno del servidor';
+  const message =
+    statusCode >= 500 ? 'Error interno del servidor' : errorMessage;
 
   const payload: Record<string, unknown> = { error: message };
 
