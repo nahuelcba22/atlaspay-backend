@@ -15,8 +15,8 @@ function getRequiredEnv(name: string): string {
 
 const port = Number(process.env.PORT || 3000);
 
-if (Number.isNaN(port)) {
-  throw new Error('PORT debe ser un número válido');
+if (!Number.isInteger(port) || port < 0 || port > 65535) {
+  throw new Error('PORT debe ser un entero entre 0 y 65535');
 }
 
 // Centraliza las variables de entorno utilizadas por el backend.
