@@ -24,7 +24,7 @@ export const getTransferencias = async (req: any, res: any) => {
 
 export const crearTransferencia = async (req: any, res: any) => {
   // "destino" acepta CVU o alias; cvu_destino se mantiene por compatibilidad.
-  const { destino, cvu_destino, monto, motivo, moneda } = req.body;
+  const { destino, cvu_destino, monto, motivo, moneda = 'ARS' } = req.body;
 
   try {
     const comprobante = await procesarTransferencia(
