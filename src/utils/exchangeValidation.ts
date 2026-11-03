@@ -31,6 +31,10 @@ export function validateExchangeRequest(
     throw new Error('Moneda de destino no soportada');
   }
 
+  if (monedaOrigen === monedaDestino) {
+    throw new Error('Las monedas de origen y destino deben ser diferentes');
+  }
+
   const origen = monedaOrigen as Currency;
   const destino = monedaDestino as Currency;
 
