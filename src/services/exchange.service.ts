@@ -74,6 +74,10 @@ export class ExchangeService {
     monedaDestino: 'ARS' | 'USD' | 'EUR' | 'PEN',
     tipo: 'CAMBIO' | 'COMPRA' | 'VENTA' = 'CAMBIO'
   ) {
+    if (monedaOrigen === monedaDestino) {
+      throw new Error('Las monedas de origen y destino deben ser diferentes');
+    }
+
     try {
       const ratesData = await this.getRates();
       const rates = ratesData.rates;
