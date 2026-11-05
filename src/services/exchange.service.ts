@@ -2,8 +2,19 @@ import { sequelize } from '../db';
 import { Cuenta } from '../models/Cuenta';
 import { Transferencia } from '../models/Transferencia';
 import { Op, fn, col } from 'sequelize';
+import { AppError } from '../utils/appError';
+import {
+  centsFromDecimal,
+  convertCents,
+  decimalFromCents,
+  toPositiveCents,
+} from '../utils/money';
 
-const nombresMoneda: Record<'ARS' | 'USD' | 'EUR' | 'PEN', string> = {
+type Moneda = 'ARS' | 'USD' | 'EUR' | 'PEN';
+
+const MONEDAS: readonly Moneda[] = ['ARS', 'USD', 'EUR', 'PEN'];
+
+const nombresMoneda: Record<Moneda, string> = {
   ARS: 'pesos argentinos',
   USD: 'dólares estadounidenses',
   EUR: 'euros',
@@ -68,82 +79,95 @@ export class ExchangeService {
   }
 
   static async procesarExchange(
-    usuario_id: string, 
-    montoVenta: number, 
-    monedaOrigen: 'ARS' | 'USD' | 'EUR' | 'PEN', 
-    monedaDestino: 'ARS' | 'USD' | 'EUR' | 'PEN',
-    tipo: 'CAMBIO' | 'COMPRA' | 'VENTA' = 'CAMBIO'
+    usuario_id: string,
+    montoVenta: number,
+    monedaOrigen: Moneda,
+    monedaDestino: Moneda,
+    tipo: 'CAMBIO' | 'COMPRA' | 'VENTA' = 'CAMBIO',
   ) {
-    if (monedaOrigen === monedaDestino) {
-      throw new Error('Las monedas de origen y destino deben ser diferentes');
+    // The column names are built from these values, so only known currencies pass.
+    if (!MONEDAS.includes(monedaOrigen) || !MONEDAS.includes(monedaDestino)) {
+      throw new AppError('Moneda de origen o destino no soportada');
     }
 
-    try {
-      const ratesData = await this.getRates();
-      const rates = ratesData.rates;
+    if (monedaOrigen === monedaDestino) {
+      throw new AppError(
+        'Las monedas de origen y destino deben ser diferentes',
+      );
+    }
 
-      if (!rates[monedaOrigen] || !rates[monedaDestino]) {
-        throw new Error('Moneda de origen o destino no soportada');
+    // Rejects non-numbers, NaN, <= 0, more than 2 decimals and overflow
+    // before touching rates or the database.
+    const ventaCentavos = toPositiveCents(montoVenta);
+
+    const { rates } = await this.getRates();
+
+    if (!rates[monedaOrigen] || !rates[monedaDestino]) {
+      throw new AppError('Moneda de origen o destino no soportada');
+    }
+
+    const tipoDeCambio = rates[monedaDestino] / rates[monedaOrigen];
+    const compraCentavos = convertCents(ventaCentavos, tipoDeCambio);
+
+    if (compraCentavos < 1) {
+      throw new AppError('El monto es demasiado bajo para convertir');
+    }
+
+    const columnaOrigen = `saldo_${monedaOrigen.toLowerCase()}`;
+    const columnaDestino = `saldo_${monedaDestino.toLowerCase()}`;
+
+    return sequelize.transaction(async (t) => {
+      const cuenta = await Cuenta.findOne({
+        where: { usuario_id },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (!cuenta) throw new AppError('Cuenta no encontrada', 404);
+
+      if (cuenta.estado !== 'activa') {
+        throw new AppError('La cuenta no está activa', 403);
       }
 
-      const tipoDeCambio = rates[monedaDestino] / rates[monedaOrigen];
+      // pg returns DECIMAL as string; all math below is on integer cents.
+      const saldoOrigen = centsFromDecimal(cuenta.get(columnaOrigen) as string);
+      const saldoDestino = centsFromDecimal(
+        cuenta.get(columnaDestino) as string,
+      );
 
-      const resultado = await sequelize.transaction(async (t) => {
-        const cuenta = await Cuenta.findOne({
-          where: { usuario_id },
-          transaction: t,
-          lock: t.LOCK.UPDATE,
-        });
+      if (saldoOrigen < ventaCentavos) {
+        throw new AppError(`Fondos insuficientes en ${monedaOrigen}`);
+      }
 
-        if (!cuenta) throw new Error('Cuenta no encontrada');
+      // Single UPDATE for both balances.
+      await cuenta.update(
+        {
+          [columnaOrigen]: decimalFromCents(saldoOrigen - ventaCentavos),
+          [columnaDestino]: decimalFromCents(saldoDestino + compraCentavos),
+        },
+        { transaction: t },
+      );
 
-        const columnaOrigen =
-          `saldo_${monedaOrigen.toLowerCase()}` as keyof Cuenta;
-        const columnaDestino =
-          `saldo_${monedaDestino.toLowerCase()}` as keyof Cuenta;
-
-        const saldoOrigenActual = Math.round(
-          parseFloat(cuenta[columnaOrigen] as string) * 100,
-        );
-        const saldoDestinoActual = Math.round(
-          parseFloat(cuenta[columnaDestino] as string) * 100,
-        );
-
-        const ventaCentavos = Math.round(montoVenta * 100);
-        const compraCentavos = Math.round(montoVenta * tipoDeCambio * 100);
-
-        if (saldoOrigenActual < ventaCentavos) {
-          throw new Error(`Fondos insuficientes en ${monedaOrigen}`);
-        }
-
-        (cuenta as any)[columnaOrigen] =
-          (saldoOrigenActual - ventaCentavos) / 100;
-        (cuenta as any)[columnaDestino] =
-          (saldoDestinoActual + compraCentavos) / 100;
-
-        await cuenta.save({ transaction: t });
-
-        const historial = await Transferencia.create({
+      const historial = await Transferencia.create(
+        {
           cuenta_origen_id: cuenta.id,
           cuenta_destino_id: cuenta.id,
-          monto: montoVenta,
-          moneda: monedaOrigen,
-          // Datos estructurados para el historial unificado.
+          // Structured data for the unified history.
           tipo,
-          monto_destino: compraCentavos / 100,
+          monto: decimalFromCents(ventaCentavos),
+          moneda: monedaOrigen,
+          monto_destino: decimalFromCents(compraCentavos),
           moneda_destino: monedaDestino,
           tasa: tipoDeCambio,
           motivo: `Exchange de ${nombresMoneda[monedaOrigen]} (${monedaOrigen}) a ${nombresMoneda[monedaDestino]} (${monedaDestino}) (Tasa: ${tipoDeCambio.toFixed(4)})`,
-        }, { transaction: t });
+        },
+        { transaction: t },
+      );
 
-        return { cuenta, historial };
-      });
-
-      return resultado;
-    } catch (error) {
-      throw error;
-    }
+      return { cuenta, historial };
+    });
   }
+
   static async getStats() {
     try {
       // 1. Cuenta el total de exchanges usando un patrón de búsqueda en el motivo
