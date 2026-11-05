@@ -6,7 +6,11 @@ interface ExchangeValidationResult {
   tipoDeCambio: number;
 }
 
-// Valida los datos del exchange y calcula la tasa entre monedas.
+// Own-property check: `in` also matches prototype keys such as "constructor".
+const isSupported = (currency: string, rates: Record<Currency, number>) =>
+  Object.prototype.hasOwnProperty.call(rates, currency);
+
+// Validates the exchange request and computes the rate between currencies.
 export function validateExchangeRequest(
   montoVenta: number,
   monedaOrigen: string,
@@ -19,15 +23,21 @@ export function validateExchangeRequest(
     );
   }
 
+  // Strings such as "abc" would otherwise slip through the comparisons below
+  // (NaN <= 0 is false) and end up as NaN in a balance.
+  if (typeof montoVenta !== 'number' || !Number.isFinite(montoVenta)) {
+    throw new Error('El monto debe ser un número válido');
+  }
+
   if (montoVenta <= 0) {
     throw new Error('El monto debe ser mayor a 0');
   }
 
-  if (!(monedaOrigen in rates)) {
+  if (!isSupported(monedaOrigen, rates)) {
     throw new Error('Moneda de origen no soportada');
   }
 
-  if (!(monedaDestino in rates)) {
+  if (!isSupported(monedaDestino, rates)) {
     throw new Error('Moneda de destino no soportada');
   }
 
