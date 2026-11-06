@@ -1,3 +1,5 @@
+import { AppError } from '../utils/appError';
+
 const MIN_TRANSFER_AMOUNT = 0.1;
 
 const balanceColumns: Record<string, string> = {
@@ -7,28 +9,37 @@ const balanceColumns: Record<string, string> = {
   PEN: 'saldo_pen',
 };
 
-// Valida el monto mínimo permitido para una transferencia.
-export function validateTransferAmount(amount: number): number {
+// Validates the minimum allowed amount for a transfer.
+// Numeric strings are still accepted for backwards compatibility; any other
+// type (boolean, null, object) is rejected instead of being coerced.
+export function validateTransferAmount(amount: unknown): number {
+  const message = 'El monto mínimo es 0.1';
+
+  if (typeof amount !== 'number' && typeof amount !== 'string') {
+    throw new AppError(message);
+  }
+
   const parsedAmount = Number(amount);
 
   if (!Number.isFinite(parsedAmount) || parsedAmount < MIN_TRANSFER_AMOUNT) {
-    throw new Error('El monto mínimo es 0.1');
+    throw new AppError(message);
   }
 
   return parsedAmount;
 }
 
-// Valida la moneda y devuelve la columna de saldo correspondiente.
-export function getBalanceColumn(currency: string): string {
-  if (!currency) {
-    throw new Error('Moneda invalida');
+// Validates the currency and returns the matching balance column.
+// The result is built from a whitelist, so it is safe to use as a column name.
+export function getBalanceColumn(currency: unknown): string {
+  if (typeof currency !== 'string') {
+    throw new AppError('Moneda invalida');
   }
 
-  const column = balanceColumns[currency.toUpperCase()];
+  const key = currency.toUpperCase();
 
-  if (!column) {
-    throw new Error('Moneda invalida');
+  if (!Object.prototype.hasOwnProperty.call(balanceColumns, key)) {
+    throw new AppError('Moneda invalida');
   }
 
-  return column;
+  return balanceColumns[key];
 }
