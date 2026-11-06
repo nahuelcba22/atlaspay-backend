@@ -1,6 +1,7 @@
 import { obtenerHistorial } from '../services/transferenciaHistory.service';
 import { procesarTransferencia } from '../services/transferencia.service';
 import { sendTransactionEmail } from '../services/transactionEmail.service';
+import { AppError } from '../utils/appError';
 
 export const getTransferencias = async (req: any, res: any) => {
   try {
@@ -73,19 +74,9 @@ export const crearTransferencia = async (req: any, res: any) => {
       errorMessage: error.message,
     });
 
-    const clientErrors = [
-      'El monto mínimo es 0.1',
-      'Moneda invalida',
-      'Cuenta origen no encontrada',
-      'Debe indicar el CVU o alias de destino',
-      'No existe una cuenta con ese CVU',
-      'No existe una cuenta con ese alias',
-      'Auto-transferencia no permitida',
-      'Saldo insuficiente',
-    ];
-
-    if (clientErrors.includes(error.message)) {
-      res.status(400).json({ error: error.message });
+        // Service errors carry their own HTTP status; anything else is unexpected.
+    if (error instanceof AppError && error.status < 500) {
+      res.status(error.status).json({ error: error.message });
       return;
     }
 
