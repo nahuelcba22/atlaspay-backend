@@ -86,10 +86,7 @@ describe('procesarTransferencia', () => {
   });
 
   it('locks both accounts once, ordered by id, before writing', async () => {
-    setup(
-      fakeCuenta('a', { saldo_ars: '100.00' }),
-      fakeCuenta('b'),
-    );
+    setup(fakeCuenta('a', { saldo_ars: '100.00' }), fakeCuenta('b'));
 
     await procesarTransferencia('user-a', CVU, 10, 'x', 'ARS');
 

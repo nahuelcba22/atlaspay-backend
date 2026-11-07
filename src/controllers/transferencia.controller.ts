@@ -74,7 +74,7 @@ export const crearTransferencia = async (req: any, res: any) => {
       errorMessage: error.message,
     });
 
-        // Service errors carry their own HTTP status; anything else is unexpected.
+    // Service errors carry their own HTTP status; anything else is unexpected.
     if (error instanceof AppError && error.status < 500) {
       res.status(error.status).json({ error: error.message });
       return;
