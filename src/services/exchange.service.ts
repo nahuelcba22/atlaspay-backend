@@ -14,6 +14,9 @@ type Moneda = 'ARS' | 'USD' | 'EUR' | 'PEN';
 
 const MONEDAS: readonly Moneda[] = ['ARS', 'USD', 'EUR', 'PEN'];
 
+// Movement types that are currency exchanges (as opposed to TRANSFERENCIA).
+const EXCHANGE_TIPOS = ['CAMBIO', 'COMPRA', 'VENTA'] as const;
+
 const nombresMoneda: Record<Moneda, string> = {
   ARS: 'pesos argentinos',
   USD: 'dólares estadounidenses',
@@ -22,12 +25,12 @@ const nombresMoneda: Record<Moneda, string> = {
 };
 
 export class ExchangeService {
-  private static ratesCache: Record<
-    'USD' | 'ARS' | 'EUR' | 'PEN',
-    number
-  > | null = null;
+  private static ratesCache: Record<Moneda, number> | null = null;
   private static lastUpdate: number = 0;
   private static readonly CACHE_TTL = 30 * 60 * 1000;
+  // Oldest cached rates still accepted when the provider is unavailable.
+  private static readonly MAX_STALE = 6 * 60 * 60 * 1000;
+  private static readonly FETCH_TIMEOUT_MS = 5000;
 
   static async getRates() {
     const now = Date.now();
@@ -41,7 +44,10 @@ export class ExchangeService {
     }
 
     try {
-      const response = await fetch('https://open.er-api.com/v6/latest/USD');
+      // The timeout keeps a hung provider from holding the request open.
+      const response = await fetch('https://open.er-api.com/v6/latest/USD', {
+        signal: AbortSignal.timeout(this.FETCH_TIMEOUT_MS),
+      });
 
       if (!response.ok) {
         throw new Error('Error al conectar con la API de cotizaciones');
@@ -49,12 +55,20 @@ export class ExchangeService {
 
       const data = await response.json();
 
-      const cotizacionesFiltradas = {
+      const cotizacionesFiltradas: Record<Moneda, number> = {
         USD: 1,
-        ARS: data.rates.ARS,
-        EUR: data.rates.EUR,
-        PEN: data.rates.PEN,
+        ARS: data?.rates?.ARS,
+        EUR: data?.rates?.EUR,
+        PEN: data?.rates?.PEN,
       };
+
+      // A missing, zero or non-numeric rate must never reach the cache.
+      const valid = Object.values(cotizacionesFiltradas).every(
+        (rate) => typeof rate === 'number' && Number.isFinite(rate) && rate > 0,
+      );
+      if (!valid) {
+        throw new Error('Respuesta de cotizaciones inválida');
+      }
 
       this.ratesCache = cotizacionesFiltradas;
       this.lastUpdate = now;
@@ -65,7 +79,8 @@ export class ExchangeService {
         rates: this.ratesCache,
       };
     } catch (error) {
-      if (this.ratesCache) {
+      // Stale rates are acceptable only for a bounded time.
+      if (this.ratesCache && now - this.lastUpdate < this.MAX_STALE) {
         console.warn('Fallback: API caída, devolviendo última caché válida.');
         return {
           source: 'fallback_cache',
@@ -170,27 +185,22 @@ export class ExchangeService {
 
   static async getStats() {
     try {
-      // 1. Cuenta el total de exchanges usando un patrón de búsqueda en el motivo
+      // Exchanges are identified by the `tipo` column, not by the free-text motivo.
+      const whereExchange = { tipo: { [Op.in]: [...EXCHANGE_TIPOS] } };
+
+      // 1. Total number of exchanges.
       const totalOperaciones = await Transferencia.count({
-        where: {
-          motivo: {
-            [Op.like]: 'Exchange de%',
-          },
-        },
+        where: whereExchange,
       });
 
-      // 2. Agrupa por moneda de origen para ver cuáles se cambian más y cuánto volumen mueven
+      // 2. Group by source currency: how often each is exchanged and its volume.
       const statsPorMoneda = await Transferencia.findAll({
         attributes: [
           'moneda',
           [fn('COUNT', col('id')), 'cantidad_operaciones'],
           [fn('SUM', col('monto')), 'volumen_total'],
         ],
-        where: {
-          motivo: {
-            [Op.like]: 'Exchange de%',
-          },
-        },
+        where: whereExchange,
         group: ['moneda'],
         order: [[fn('COUNT', col('id')), 'DESC']],
       });
