@@ -89,7 +89,7 @@ export class ExchangeService {
         };
       }
 
-      throw new Error('Servicio de exchange no disponible temporalmente');
+            throw new AppError('Servicio de exchange no disponible temporalmente', 503);
     }
   }
 
