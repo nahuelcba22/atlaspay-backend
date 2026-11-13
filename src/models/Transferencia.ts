@@ -19,6 +19,7 @@ export class Transferencia extends Model {
   declare public tasa: number | null;
   declare public motivo: string;
   declare public readonly fecha: Date;
+  declare public idempotency_key: string | null;
 }
 
 Transferencia.init(
@@ -76,6 +77,12 @@ Transferencia.init(
     fecha: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+    },
+        // Optional client key to make retries safe. The partial unique index
+    // lives in scripts/sql/002_idempotency.sql.
+    idempotency_key: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
     },
   },
   {
