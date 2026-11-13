@@ -1,6 +1,7 @@
 import { obtenerHistorial } from '../services/transferenciaHistory.service';
 import { procesarTransferencia } from '../services/transferencia.service';
 import { sendTransactionEmail } from '../services/transactionEmail.service';
+import { idempotencyKeySchema } from '../schemas/idempotency.schema';
 import { AppError } from '../utils/appError';
 
 export const getTransferencias = async (req: any, res: any) => {
@@ -27,14 +28,41 @@ export const crearTransferencia = async (req: any, res: any) => {
   // "destino" acepta CVU o alias; cvu_destino se mantiene por compatibilidad.
   const { destino, cvu_destino, monto, motivo, moneda = 'ARS' } = req.body;
 
+  // Optional header: without it the endpoint behaves exactly as before.
+  const rawKey = req.header('Idempotency-Key');
+  let idempotencyKey: string | undefined;
+
+  if (rawKey !== undefined) {
+    const parsed = idempotencyKeySchema.safeParse(rawKey.trim());
+
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0].message });
+      return;
+    }
+
+    idempotencyKey = parsed.data;
+  }
+
   try {
-    const comprobante = await procesarTransferencia(
-      req.usuario.id,
-      destino ?? cvu_destino,
-      monto,
-      motivo,
-      moneda,
-    );
+    const { transferencia: comprobante, replayed } =
+      await procesarTransferencia(
+        req.usuario.id,
+        destino ?? cvu_destino,
+        monto,
+        motivo,
+        moneda,
+        idempotencyKey,
+      );
+
+    if (replayed) {
+      // The original request already sent its email; do not send another.
+      res.setHeader('Idempotent-Replayed', 'true');
+      res.status(200).json({
+        message: 'Transferencia realizada con exito',
+        comprobante,
+      });
+      return;
+    }
 
     // Espera el diagnóstico del mail sin afectar la transferencia.
     await sendTransactionEmail({
