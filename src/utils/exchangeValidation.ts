@@ -1,3 +1,5 @@
+import { AppError } from './appError';
+
 type Currency = 'ARS' | 'USD' | 'EUR' | 'PEN';
 
 interface ExchangeValidationResult {
@@ -18,7 +20,7 @@ export function validateExchangeRequest(
   rates: Record<Currency, number>,
 ): ExchangeValidationResult {
   if (!montoVenta || !monedaOrigen || !monedaDestino) {
-    throw new Error(
+    throw new AppError(
       'Faltan datos (montoVenta, monedaOrigen, monedaDestino)',
     );
   }
@@ -26,23 +28,23 @@ export function validateExchangeRequest(
   // Strings such as "abc" would otherwise slip through the comparisons below
   // (NaN <= 0 is false) and end up as NaN in a balance.
   if (typeof montoVenta !== 'number' || !Number.isFinite(montoVenta)) {
-    throw new Error('El monto debe ser un número válido');
+    throw new AppError('El monto debe ser un número válido');
   }
 
   if (montoVenta <= 0) {
-    throw new Error('El monto debe ser mayor a 0');
+    throw new AppError('El monto debe ser mayor a 0');
   }
 
   if (!isSupported(monedaOrigen, rates)) {
-    throw new Error('Moneda de origen no soportada');
+    throw new AppError('Moneda de origen no soportada');
   }
 
   if (!isSupported(monedaDestino, rates)) {
-    throw new Error('Moneda de destino no soportada');
+    throw new AppError('Moneda de destino no soportada');
   }
 
   if (monedaOrigen === monedaDestino) {
-    throw new Error('Las monedas de origen y destino deben ser diferentes');
+    throw new AppError('Las monedas de origen y destino deben ser diferentes');
   }
 
   const origen = monedaOrigen as Currency;
@@ -52,15 +54,14 @@ export function validateExchangeRequest(
   const minimoUSD = 0.1;
 
   if (montoEnUSD < minimoUSD) {
-    let mensaje =
-      `El monto mínimo por operación es de $${minimoUSD} USD`;
+    let mensaje = `El monto mínimo por operación es de $${minimoUSD} USD`;
 
     if (origen !== 'USD') {
       const minimoOrigen = (minimoUSD * rates[origen]).toFixed(2);
       mensaje += ` (Aprox. $${minimoOrigen} ${origen})`;
     }
 
-    throw new Error(mensaje);
+    throw new AppError(mensaje);
   }
 
   return {
