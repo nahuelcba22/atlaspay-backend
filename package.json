@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "vitest run --config vitest.integration.config.mts"
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "test:unit": "vitest run --exclude tests/usuarios.test.ts --exclude tests/transferencias.test.ts"
   },
   "repository": {
     "type": "git",
@@ -49,11 +50,6 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^26.6.2",
     "@types/supertest": "^7.2.1",
-    "@typescript-eslint/eslint-plugin": "^8.70.1",
-    "@typescript-eslint/parser": "^8.70.1",
-    "eslint": "^10.11.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.6",
     "prettier": "^3.9.9",
     "supertest": "^7.3.0",
     "tsx": "^4.23.15",
